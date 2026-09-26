@@ -6,14 +6,199 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Ses Dökümü" />
+  <meta name="apple-mobile-web-app-title" content="Ses Dokumu" />
   <meta name="theme-color" content="#0b0d12" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="./icon.svg" />
   <link rel="icon" href="./icon.svg" />
-  <title>Ses Dökümü</title>
+  <title>Ses Dokumu</title>
+  <style>
+    :root { --bg:#0b0d12; --card:#141821; --card2:#1b2130; --line:#2a3344; --text:#e8edf5; --muted:#8b97ab; --accent:#5ee0b5; --danger:#ff6b7a; }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    body { min-height:100dvh; padding:16px 16px calc(28px + env(safe-area-inset-bottom)); }
+    h1 { font-size:1.25rem; font-weight:650; margin:0 0 4px; }
+    .sub { color:var(--muted); font-size:.85rem; margin-bottom:14px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:12px; }
+    label.k { display:block; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
+    textarea,select { width:100%; background:var(--card2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:11px 12px; font-size:16px; }
+    textarea { min-height:220px; resize:vertical; line-height:1.55; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    button { appearance:none; border:0; border-radius:12px; padding:14px; font-size:1rem; font-weight:650; cursor:pointer; width:100%; min-height:48px; }
+    .btn-a { background:var(--accent); color:#06241b; }
+    .btn-b { background:var(--card2); color:var(--text); border:1px solid var(--line); }
+    .btn-d { background:#3a1c22; color:var(--danger); }
+    button:disabled { opacity:.45; }
+    .drop { border:1.5px dashed var(--line); border-radius:14px; padding:18px 12px; text-align:center; color:var(--muted); background:var(--card2); }
+    .drop strong { color:var(--text); display:block; margin-bottom:4px; }
+    .file-name { margin-top:8px; font-size:.82rem; color:var(--accent); word-break:break-all; }
+    .status { font-size:.82rem; color:var(--muted); min-height:1.2em; margin-top:8px; }
+    .status.err { color:var(--danger); }
+    .rec-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--danger); margin-right:6px; animation:pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity:.35; } }
+    .hint { font-size:.75rem; color:var(--muted); margin-top:6px; line-height:1.4; }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .bar { height:6px; background:var(--card2); border-radius:99px; overflow:hidden; margin-top:8px; }
+    .bar > i { display:block; height:100%; width:0; background:var(--accent); }
+    #banner { display:none; background:#3a1c22; color:#ffd0d5; border-radius:12px; padding:10px 12px; margin-bottom:12px; font-size:.85rem; }
+  </style>
 </head>
 <body>
-<p>yukleniyor</p>
+  <div id="banner"></div>
+  <h1>Ses Dokumu</h1>
+  <p class="sub">Anahtar yok. Model cihazda calisir. Safari: Paylas - Ana Ekrana Ekle.</p>
+  <div class="card">
+    <label class="k" for="model">Model</label>
+    <select id="model">
+      <option value="Xenova/whisper-tiny">tiny - hizli, telefon</option>
+      <option value="Xenova/whisper-base">base - daha dogru</option>
+    </select>
+    <button class="btn-a" type="button" id="loadModel" style="margin-top:10px">Modeli yukle</button>
+    <div class="bar"><i id="prog"></i></div>
+    <p class="status" id="modelStatus">Kutuphane baglaniyor...</p>
+  </div>
+  <div class="card">
+    <label class="k">Dosya</label>
+    <div class="drop" id="drop"><strong>Ses dosyasini sec</strong>m4a, mp3, wav, webm, ogg, mp4<div class="file-name" id="fname"></div></div>
+    <input id="file" type="file" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.webm,.ogg,.mp4" hidden />
+    <div class="row" style="margin-top:10px">
+      <button class="btn-b" type="button" id="pick">Dosya sec</button>
+      <button class="btn-a" type="button" id="transFile" disabled>Dokumu al</button>
+    </div>
+  </div>
+  <div class="card">
+    <label class="k">Kayit</label>
+    <div class="row">
+      <button class="btn-a" type="button" id="recStart">Kayda basla</button>
+      <button class="btn-d" type="button" id="recStop" disabled>Durdur</button>
+    </div>
+    <p class="status" id="recStatus"></p>
+    <div class="row">
+      <button class="btn-a" type="button" id="transRec" disabled>Kaydi dok</button>
+      <button class="btn-b" type="button" id="playRec" disabled>Dinle</button>
+    </div>
+  </div>
+  <div class="card">
+    <label class="k" for="out">Metin</label>
+    <textarea id="out" placeholder="Dokum burada gorunecek"></textarea>
+    <div class="actions">
+      <button class="btn-b" type="button" id="copy">Kopyala</button>
+      <button class="btn-b" type="button" id="dl">Indir (.txt)</button>
+    </div>
+    <p class="status" id="msg"></p>
+  </div>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  $("loadModel").disabled = true;
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+  window.sdShow = function (el, t, err) {
+    el.textContent = t || "";
+    el.className = "status" + (err ? " err" : "");
+  };
+  window.sdBanner = function (t) {
+    const b = $("banner");
+    b.style.display = "block";
+    b.textContent = t;
+  };
+})();
+</script>
+<script type="module">
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/+esm";
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+const $ = (id) => document.getElementById(id);
+const outEl = $("out"), msgEl = $("msg"), recStatus = $("recStatus"), modelStatus = $("modelStatus"), prog = $("prog"), loadBtn = $("loadModel");
+let transcriber = null, loadedModel = null, chosenFile = null, recBlob = null, recUrl = null, mediaRecorder = null, recChunks = [], recStartAt = 0, timerId = null, loading = false;
+function setMsg(t, err) { window.sdShow(msgEl, t, err); }
+function fmt(ms) { const s = Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0"); }
+loadBtn.disabled = false;
+modelStatus.textContent = "Hazir. Modeli yukle'ye bas.";
+$("pick").onclick = () => $("file").click();
+$("drop").onclick = () => $("file").click();
+$("file").onchange = () => { chosenFile = $("file").files && $("file").files[0]; $("fname").textContent = chosenFile ? chosenFile.name : ""; $("transFile").disabled = !chosenFile; };
+async function ensureModel() {
+  const name = $("model").value;
+  if (transcriber && loadedModel === name) return transcriber;
+  if (loading) throw new Error("Model zaten yukleniyor.");
+  loading = true; loadBtn.disabled = true;
+  modelStatus.textContent = "Model indiriliyor..."; prog.style.width = "3%";
+  try {
+    transcriber = await pipeline("automatic-speech-recognition", name, {
+      dtype: "q8",
+      progress_callback: (p) => {
+        if (p && typeof p.progress === "number") prog.style.width = Math.min(100, Math.round(p.progress)) + "%";
+        if (p && p.status) modelStatus.textContent = p.status + (p.file ? " " + String(p.file).split("/").pop() : "");
+      }
+    });
+    loadedModel = name; prog.style.width = "100%"; modelStatus.textContent = "Model hazir.";
+    return transcriber;
+  } finally { loading = false; loadBtn.disabled = false; }
+}
+loadBtn.addEventListener("click", async (e) => {
+  e.preventDefault();
+  try { await ensureModel(); }
+  catch (err) { modelStatus.textContent = "Yuklenemedi: " + (err.message || err); modelStatus.className = "status err"; }
+});
+async function to16kMono(blob) {
+  const raw = await blob.arrayBuffer();
+  const tmp = new (window.AudioContext || window.webkitAudioContext)();
+  const decoded = await tmp.decodeAudioData(raw.slice(0));
+  const offline = new OfflineAudioContext(1, Math.max(1, Math.ceil(16000 * decoded.duration)), 16000);
+  const mono = offline.createBuffer(1, decoded.length, decoded.sampleRate);
+  const dest = mono.getChannelData(0); const nCh = decoded.numberOfChannels;
+  for (let i = 0; i < decoded.length; i++) { let s = 0; for (let c = 0; c < nCh; c++) s += decoded.getChannelData(c)[i]; dest[i] = s / nCh; }
+  const src = offline.createBufferSource(); src.buffer = mono; src.connect(offline.destination); src.start(0);
+  const rendered = await offline.startRendering(); await tmp.close(); return rendered.getChannelData(0);
+}
+async function transcribeBlob(blob) {
+  setMsg("Ses cozuluyor...");
+  const audio = await to16kMono(blob);
+  setMsg("Dokum aliniyor... (" + Math.round(audio.length / 16000) + " sn)");
+  const pipe = await ensureModel();
+  const result = await pipe(audio, { language: "turkish", task: "transcribe", chunk_length_s: 20, stride_length_s: 5 });
+  outEl.value = (result && result.text ? result.text : "").trim();
+  setMsg("Tamam.");
+}
+$("transFile").onclick = async () => { if (!chosenFile) return; $("transFile").disabled = true; try { await transcribeBlob(chosenFile); } catch (e) { setMsg(e.message || String(e), true); } finally { $("transFile").disabled = false; } };
+function pickMime() {
+  const types = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+  if (!window.MediaRecorder) return "";
+  return types.find((t) => MediaRecorder.isTypeSupported(t)) || "";
+}
+$("recStart").onclick = async () => {
+  recBlob = null; $("transRec").disabled = true; $("playRec").disabled = true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = pickMime();
+    recChunks = [];
+    mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      recBlob = new Blob(recChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+      if (recUrl) URL.revokeObjectURL(recUrl);
+      recUrl = URL.createObjectURL(recBlob);
+      $("transRec").disabled = recBlob.size < 200; $("playRec").disabled = false;
+      recStatus.textContent = "Kayit hazir";
+    };
+    mediaRecorder.start(250); recStartAt = Date.now(); $("recStart").disabled = true; $("recStop").disabled = false;
+    timerId = setInterval(() => { recStatus.innerHTML = '<span class="rec-dot"></span>Kayit ' + fmt(Date.now() - recStartAt); }, 250);
+  } catch (err) { recStatus.textContent = "Mikrofon acilamadi: " + (err.message || err); recStatus.className = "status err"; }
+};
+$("recStop").onclick = () => { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); $("recStart").disabled = false; $("recStop").disabled = true; clearInterval(timerId); };
+$("playRec").onclick = () => { if (recUrl) new Audio(recUrl).play(); };
+$("transRec").onclick = async () => { if (!recBlob) return; $("transRec").disabled = true; try { await transcribeBlob(recBlob); } catch (e) { setMsg(e.message || String(e), true); } finally { $("transRec").disabled = false; } };
+$("copy").onclick = async () => { try { await navigator.clipboard.writeText(outEl.value); setMsg("Kopyalandi."); } catch { outEl.select(); document.execCommand("copy"); setMsg("Kopyalandi."); } };
+$("dl").onclick = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([outEl.value], { type: "text/plain;charset=utf-8" })); a.download = "dokum.txt"; a.click(); };
+</script>
+<script>
+setTimeout(function () {
+  var s = document.getElementById("modelStatus");
+  if (s && s.textContent.indexOf("Kutuphane") === 0) window.sdBanner("Kutuphane yuklenemedi. Sayfayi Safari ile ac.");
+}, 8000);
+</script>
 </body>
 </html>
